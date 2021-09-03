@@ -1,8 +1,7 @@
 package de.denktmit.katas.connectfour;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.OptionalInt;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static de.denktmit.katas.connectfour.GameState.*;
@@ -15,6 +14,7 @@ public class ConnectFourGame {
 
     private static final int NUMBER_OF_COLUMNS = 7;
     private static final int NUMBER_OF_ROWS = 6;
+    private static final int TOKENS_IN_ROW_TO_WIN = 4;
 
     private static final String PLAYFIELD_ROW_BORDER = String.join(
             "", Collections.nCopies(NUMBER_OF_COLUMNS, "+-")) + "+";
@@ -84,20 +84,81 @@ public class ConnectFourGame {
      */
     public void dropToken(int columnIndex) {
         OptionalInt slotIndex = firstEmptySlotOfColumn(columnIndex);
-        if (slotIndex.isEmpty()) {
+        if (slotIndex.isEmpty() || currentState == PLAYER_ONE_WON || currentState == PLAYER_TWO_WON) {
             return;
         }
         processTokenDrop(slotIndex.getAsInt());
+
     }
 
-    private void processTokenDrop(Integer slotIndex) {
+    private void processTokenDrop(int slotIndex) {
         slots[slotIndex] = (currentState == PLAYER_ONE_TURN)? Slot.P1 : Slot.P2;
-        if (isDraw()) {
+        if (isWon(slotIndex)){
+            currentState = (currentState == PLAYER_ONE_TURN)
+                    ? PLAYER_ONE_WON
+                    : PLAYER_TWO_WON;
+        } else if (isDraw()) {
             currentState = DRAW;
         } else {
             currentState = (currentState == PLAYER_ONE_TURN)? PLAYER_TWO_TURN : PLAYER_ONE_TURN;
         }
     }
+
+    private boolean isWon(int slotIndex) {
+        return hasConnectedFourInDirection(slotIndex, 1, 1)
+                || hasConnectedFourInDirection(slotIndex, -1, 1)
+                || hasConnectedFourInDirection(slotIndex, 1, 0)
+                || hasConnectedFourInDirection(slotIndex, 0, 1);
+    }
+
+    private boolean hasConnectedFourInDirection(int slotIndex, int rowDirection, int columnDirection) {
+        List<Integer> slotsToCheck = getSlotsToCheck(slotIndex, rowDirection, columnDirection);
+        if (slotsToCheck.size() < TOKENS_IN_ROW_TO_WIN) {
+            return false;
+        }
+        return hasConnectedFourInDirection(slotsToCheck);
+    }
+
+    private List<Integer> getSlotsToCheck(int slotIndex, int rowDirection, int columnDirection) {
+        Deque<Integer> deque = new ArrayDeque<>(7);
+        deque.add(slotIndex);
+        for(int i = 1; i < TOKENS_IN_ROW_TO_WIN; i++) {
+            getOffsetIndex(slotIndex, rowDirection * -i, columnDirection * -i)
+                    .ifPresent(deque::addLast);
+            getOffsetIndex(slotIndex, rowDirection * i, columnDirection * i)
+                    .ifPresent(deque::addFirst);
+        }
+        return deque.stream().toList();
+    }
+
+    private OptionalInt getOffsetIndex(int index, int columnOffset, int rowOffset) {
+        int remainder = index % NUMBER_OF_COLUMNS;
+        int columnOffsetIndex = remainder + columnOffset;
+        if (columnOffsetIndex < 0 || columnOffsetIndex >= NUMBER_OF_COLUMNS) {
+            return OptionalInt.empty();
+        }
+        int offsetIndex = index + columnOffset + (rowOffset * NUMBER_OF_COLUMNS);
+        return (offsetIndex >= 0 && offsetIndex < NUMBER_OF_COLUMNS * NUMBER_OF_ROWS)
+                ? OptionalInt.of(offsetIndex)
+                : OptionalInt.empty();
+    }
+
+    private boolean hasConnectedFourInDirection(List<Integer> slotsToCheck) {
+        Slot previousSlot = null;
+        int connectCount = 0;
+        for (Integer currentSlotIndex : slotsToCheck){
+            Slot currentSlot = slots[currentSlotIndex];
+            if (currentSlot != previousSlot) {
+                connectCount = 0;
+            }
+            if (++connectCount == TOKENS_IN_ROW_TO_WIN) {
+                return true;
+            }
+            previousSlot = currentSlot;
+        }
+        return false;
+    }
+
 
     private boolean isDraw() {
         long filledSlotsCount = Arrays.stream(slots).filter(slot -> slot != EMPTY).count();
