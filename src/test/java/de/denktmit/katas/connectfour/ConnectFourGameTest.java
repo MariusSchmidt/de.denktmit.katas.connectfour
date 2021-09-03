@@ -29,6 +29,15 @@ class ConnectFourGameTest {
     }
 
     @Test
+    void dropsToInvalidColumns() {
+        game.dropToken(-1);
+        game.dropToken(7);
+        game.dropToken(-2);
+        assertEquals(emptyPlayfield, game.printPlayfield());
+        assertEquals(game.getCurrentState(), GameState.PLAYER_ONE_TURN);
+    }
+
+    @Test
     void printPlayfieldAfterDropsToColumn1112234() {
         game.dropToken(0);
         game.dropToken(0);
@@ -52,6 +61,41 @@ class ConnectFourGameTest {
         game.dropToken(0);
         assertEquals(game.getCurrentState(), GameState.PLAYER_ONE_TURN);
         assertEquals(playfieldAfterDropsToColumns1111111, game.printPlayfield());
+    }
+
+    @Test
+    void printPlayfieldAfterDraw() {
+        dropAlternating(0,1);
+        dropAlternating(1,0);
+        dropAlternating(2,3);
+        dropAlternating(3,2);
+        dropAlternating(4,5);
+        dropAlternating(5,4);
+        dropAlternating(6,6);
+        assertEquals(game.getCurrentState(), GameState.DRAW);
+        assertEquals(playfieldAfterDraw, game.printPlayfield());
+    }
+
+    private void dropAlternating(int firstColumn, int secondColumn) {
+        for (int i = 0; i < 3; i++) {
+            game.dropToken(firstColumn);
+            game.dropToken(secondColumn);
+        }
+    }
+
+
+    @Test
+    void printPlayfieldAfterDrawAdditionalDrops() {
+        dropAlternating(0,1);
+        dropAlternating(1,0);
+        dropAlternating(2,3);
+        dropAlternating(3,2);
+        dropAlternating(4,5);
+        dropAlternating(5,4);
+        dropAlternating(6,6);
+        game.dropToken(6);
+        assertEquals(game.getCurrentState(), GameState.DRAW);
+        assertEquals(playfieldAfterDraw, game.printPlayfield());
     }
 
 

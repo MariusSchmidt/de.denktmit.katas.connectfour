@@ -2,9 +2,11 @@ package de.denktmit.katas.connectfour;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.OptionalInt;
+import java.util.stream.IntStream;
 
-import static de.denktmit.katas.connectfour.GameState.PLAYER_ONE_TURN;
-import static de.denktmit.katas.connectfour.GameState.PLAYER_TWO_TURN;
+import static de.denktmit.katas.connectfour.GameState.*;
+import static de.denktmit.katas.connectfour.Slot.EMPTY;
 
 /**
  *
@@ -45,9 +47,14 @@ public class ConnectFourGame {
 
     public ConnectFourGame() {
         slots = new Slot[NUMBER_OF_COLUMNS * NUMBER_OF_ROWS];
-        Arrays.fill(slots, Slot.EMPTY);
+        Arrays.fill(slots, EMPTY);
     }
 
+    /**
+     * Prints the playfield as ASCII text
+     *
+     * @return An ASCII representation of the current playfield
+     */
     public String printPlayfield() {
         StringBuilder playfield = new StringBuilder();
         for (int row = NUMBER_OF_ROWS - 1; row >= 0; row--) {
@@ -69,27 +76,38 @@ public class ConnectFourGame {
         return slotRow.toString();
     }
 
+    /**
+     * Drop a coin to the n-th column. If column is already full or column index is out of bounds
+     * the drop is ignored. The method therefore rejects any invalid input by ignoring it.
+     *
+     * @param columnIndex The column to drop the token at. Columns index start at 0.
+     */
     public void dropToken(int columnIndex) {
-        if (columnIndex < 0 || columnIndex >= NUMBER_OF_COLUMNS) {
+        OptionalInt slotIndex = firstEmptySlotOfColumn(columnIndex);
+        if (slotIndex.isEmpty()) {
             return;
         }
-        Integer slotIndex = firstEmptySlotOfColumn(columnIndex);
-        if (slotIndex == null) {
-            return;
-        }
-        slots[slotIndex] = (currentState == PLAYER_ONE_TURN)? Slot.P1 : Slot.P2;
-        currentState = (currentState == PLAYER_ONE_TURN)? PLAYER_TWO_TURN : PLAYER_ONE_TURN;
+        processTokenDrop(slotIndex.getAsInt());
     }
 
-    private Integer firstEmptySlotOfColumn(int columnIndex) {
-        Integer firstEmptySlotIndex = null;
-        for (int slotIndexToCheck = columnIndex; slotIndexToCheck < slots.length; slotIndexToCheck+= NUMBER_OF_COLUMNS) {
-            if (slots[slotIndexToCheck] == Slot.EMPTY) {
-                firstEmptySlotIndex = slotIndexToCheck;
-                break;
-            }
+    private void processTokenDrop(Integer slotIndex) {
+        slots[slotIndex] = (currentState == PLAYER_ONE_TURN)? Slot.P1 : Slot.P2;
+        if (isDraw()) {
+            currentState = DRAW;
+        } else {
+            currentState = (currentState == PLAYER_ONE_TURN)? PLAYER_TWO_TURN : PLAYER_ONE_TURN;
         }
-        return firstEmptySlotIndex;
+    }
+
+    private boolean isDraw() {
+        long filledSlotsCount = Arrays.stream(slots).filter(slot -> slot != EMPTY).count();
+        return NUMBER_OF_COLUMNS * NUMBER_OF_ROWS == filledSlotsCount;
+    }
+
+    private OptionalInt firstEmptySlotOfColumn(int columnIndex) {
+        return IntStream.range(0, slots.length)
+                .filter(i -> (i % NUMBER_OF_COLUMNS == columnIndex && slots[i] == EMPTY))
+                .findFirst();
     }
 
     public GameState getCurrentState() {
